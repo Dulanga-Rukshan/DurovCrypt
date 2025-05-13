@@ -11,3 +11,9 @@ func (e *ErrorHandeling) Error() string {
 func NewFileError(message, help string) error {
 	return &ErrorHandeling{Message: message, HelpMsg: help}
 }
+
+func MainErr(message error) {
+	if message != nil {
+		fmt.Printf("\nERROR: %v\n", message)
+	}
+}
