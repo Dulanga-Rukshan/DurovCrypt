@@ -1,11 +1,50 @@
 package DurovCrypt
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"unicode"
 )
+
+// password policy
+var (
+	Policy = PasswordPolicyCheck{
+		MinLength:           6,
+		MaxLength:           64,
+		RequireUpper:        true,
+		RequireLower:        true,
+		RequireSymbol:       true,
+		RequireNumber:       true,
+		DenyWhiteSpace:      true,
+		AllowedSpecialChars: "{}()!@#$%^&*+_<>?:';,.][-|\"\\/",
+	}
+)
+
+// operation asker function
+func PasswordAskInput(prompt string) (string, error) {
+
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Printf("Enter a password for the %s: ", prompt)
+		input, err := reader.ReadString('\n')
+		MainErr(err)
+
+		password := strings.TrimSpace(input)
+
+		//password validation
+		if err := PasswordChecker(password, Policy); err != nil {
+			fmt.Println("\nInvalid password:", err)
+			fmt.Printf("Please try again!!\n")
+			continue
+		}
+		return input, nil
+
+	}
+
+}
 
 // password valid checker for encrypt
 func PasswordChecker(password string, passwordPolicy PasswordPolicyCheck) error {
