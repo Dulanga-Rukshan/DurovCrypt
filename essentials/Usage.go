@@ -1,7 +1,7 @@
 package DurovCrypt
 
 func ShowHelp() string {
-	help := `
+  help := `
  DurovCrypt - A go file password base file encryptor
 
 USAGE:
@@ -35,14 +35,14 @@ SECURITY TIPS:
 
 VERSION: 1.0.0
 `
-	return help
+  return help
 }
 
 func HelpMsg() string {
-	help := `COMMANDS:
-		encrypt (e)    - Encrypt a file
-		decrypt (d)    - Decrypt a file
-		help (h)       - Show this help message`
+  help := `COMMANDS:
+    encrypt (e)    - Encrypt a file
+    decrypt (d)    - Decrypt a file
+    help (h)       - Show this help message`
 
-	return help
+  return help
 }

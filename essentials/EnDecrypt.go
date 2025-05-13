@@ -40,7 +40,7 @@ func (masterKey *Aragon2Key) Generate() ([]byte, error) {
 }
 
 // key generation
-func KeyGen(password string, operation string) ([]byte, error) {
+func KeyGen(password string) ([]byte, error) {
 
 	//key generation
 	salt := DataKey()

@@ -39,7 +39,7 @@ func main() {
 		ess.MainErr(err3)
 
 		//key generation
-		derivedKey, err5 := ess.KeyGen(password, encryptFunctionCall)
+		derivedKey, err5 := ess.KeyGen(password)
 		ess.MainErr(err5)
 
 		//open the file and read the data and assign data to variable
