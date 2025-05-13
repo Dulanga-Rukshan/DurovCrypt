@@ -56,7 +56,31 @@ func main() {
 
 		fmt.Printf("File Encrypted. %v.", successMsg)
 
-		// case strings.ToUpper(Operation) == "D" || strings.ToUpper(Operation) == "DECRYPT":
-		// 	OperationForEnAndDe(decryptFunctionCall)
+	case strings.ToUpper(Operation) == "D" || strings.ToUpper(Operation) == "DECRYPT":
+		//getting file path for decrypt
+		fileName, err2 := ess.FilePathInput(encryptFunctionCall)
+		ess.MainErr(err2)
+
+		//ask user for password to encrypt
+		password, err3 := ess.PasswordAskInput(encryptFunctionCall)
+		ess.MainErr(err3)
+
+		//key generation
+		derivedKey, err5 := ess.KeyGen(password)
+		ess.MainErr(err5)
+
+		//open the file and read the data and assign data to variable
+		fileData, err6 := ess.FileRead(fileName)
+		ess.MainErr(err6)
+
+		//encrypting the data
+		encryptedData, err7 := ess.Encrypt(derivedKey, string(fileData))
+		ess.MainErr(err7)
+
+		//write the ciphertext data to file
+		successMsg, err8 := ess.FileWrite([]byte(encryptedData), fileName)
+		ess.MainErr(err8)
+
+		fmt.Printf("File Encrypted. %v.", successMsg)
 	}
 }
