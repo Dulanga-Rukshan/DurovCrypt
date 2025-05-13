@@ -8,16 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 
 	"golang.org/x/crypto/argon2"
 )
-
-func CheckErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-
-}
 
 // key gernerating for encrypt and decrypt
 func (masterKey *Aragon2Key) Generate() ([]byte, error) {
@@ -45,6 +39,28 @@ func (masterKey *Aragon2Key) Generate() ([]byte, error) {
 	return derivedKey, nil
 }
 
+// key generation
+func KeyGen(password string, operation string) ([]byte, error) {
+
+	//key generation
+	salt := DataKey()
+	NewKey := Aragon2Key{
+		Password:  []byte(password),
+		Salt:      salt,
+		Iteration: uint32(3),
+		MemSize:   uint32(64 * 1024),
+		Threads:   uint8(runtime.NumCPU()),
+		KeyLength: 32,
+	}
+
+	derivedKey, err6 := NewKey.Generate()
+	if err6 != nil {
+		return nil, fmt.Errorf("\nERROR: %v\n", err6)
+	}
+
+	return derivedKey, nil
+}
+
 // aes256 Key
 func DataKey() []byte {
 	datakey := make([]byte, 32)
@@ -58,11 +74,11 @@ func DataKey() []byte {
 func Encrypt(Key []byte, plaintext string) (string, error) {
 	//aes
 	AES, err := aes.NewCipher(Key)
-	CheckErr(err)
+	MainErr(err)
 
 	//gcm
 	gcm, err := cipher.NewGCM(AES)
-	CheckErr(err)
+	MainErr(err)
 
 	//gcm nonce or iv generate
 	nonce := make([]byte, gcm.NonceSize())
@@ -84,11 +100,11 @@ func Decrypt(Key []byte, cipherText string) (string, error) {
 
 	//aes
 	AES, err := aes.NewCipher(Key)
-	CheckErr(err)
+	MainErr(err)
 
 	//gcm
 	gcm, err := cipher.NewGCM(AES)
-	CheckErr(err)
+	MainErr(err)
 
 	//nonceSize
 	nonceSize := gcm.NonceSize()
