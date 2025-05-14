@@ -4,28 +4,39 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"runtime"
+	"strings"
 
 	"golang.org/x/crypto/argon2"
 )
 
+// aes256 salt generator
+func DataKey() []byte {
+	datakey := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, datakey); err != nil {
+		fmt.Println("Err: Aragon2 salt generate failed: %w", err)
+	}
+	return datakey
+}
+
 // key gernerating for encrypt and decrypt
-func (masterKey *Aragon2Key) Generate() ([]byte, error) {
+func (masterKey *Aragon2Key) Generate() ([]byte, []byte, error) {
 	if masterKey == nil {
-		return nil, errors.New("Err: Argon key not found!")
+		return nil, nil, errors.New("Err: Argon key not found!")
 	}
 	if len(masterKey.Password) == 0 {
-		return nil, errors.New("Err: Password is empty!")
+		return nil, nil, errors.New("Err: Password is empty!")
 	}
 	if len(masterKey.Salt) < 8 {
-		return nil, errors.New("Err: Salt is weak!")
+		return nil, nil, errors.New("Err: Salt is weak!")
 	}
 	if masterKey.Iteration < 1 {
-		return nil, errors.New("Err: Iteration count is low!")
+		return nil, nil, errors.New("Err: Iteration count is low!")
 	}
 
 	derivedKey := argon2.IDKey(
@@ -36,38 +47,50 @@ func (masterKey *Aragon2Key) Generate() ([]byte, error) {
 		masterKey.Threads,
 		uint32(masterKey.KeyLength),
 	)
-	return derivedKey, nil
+	b64Salt := base64.RawStdEncoding.EncodeToString(masterKey.Salt)
+	return derivedKey, []byte(b64Salt), nil
 }
 
 // key generation
-func KeyGen(password string) ([]byte, error) {
+func KeyGen(password string, operation string, salt []byte) ([]byte, []byte, error) {
 
-	//key generation
-	salt := DataKey()
-	NewKey := Aragon2Key{
-		Password:  []byte(password),
-		Salt:      salt,
-		Iteration: uint32(3),
-		MemSize:   uint32(64 * 1024),
-		Threads:   uint8(runtime.NumCPU()),
-		KeyLength: 32,
+	switch strings.ToUpper(operation) {
+	case "ENCRYPT", "E":
+
+		NewKey := Aragon2Key{
+			Password:  []byte(password),
+			Salt:      salt,
+			Iteration: uint32(3),
+			MemSize:   uint32(64 * 1024),
+			Threads:   uint8(runtime.NumCPU()),
+			KeyLength: 32,
+		}
+		derivedKey, derivedSalt, err6 := NewKey.Generate()
+		if err6 != nil {
+			return nil, nil, fmt.Errorf("\nERROR: %v\n", err6)
+		}
+
+		return derivedKey, derivedSalt, nil
+
+	case "DECRYPT", "D":
+		//key generation
+		NewKey := Aragon2Key{
+			Password:  []byte(password),
+			Salt:      salt,
+			Iteration: uint32(3),
+			MemSize:   uint32(64 * 1024),
+			Threads:   uint8(runtime.NumCPU()),
+			KeyLength: 32,
+		}
+		derivedKey, derivedSalt, err6 := NewKey.Generate()
+		if err6 != nil {
+			return nil, nil, fmt.Errorf("\nERROR: %v\n", err6)
+		}
+
+		return derivedKey, derivedSalt, nil
 	}
 
-	derivedKey, err6 := NewKey.Generate()
-	if err6 != nil {
-		return nil, fmt.Errorf("\nERROR: %v\n", err6)
-	}
-
-	return derivedKey, nil
-}
-
-// aes256 Key
-func DataKey() []byte {
-	datakey := make([]byte, 32)
-	if _, err := io.ReadFull(rand.Reader, datakey); err != nil {
-		fmt.Println("Err: Aragon salt generate failed: %w", err)
-	}
-	return datakey
+	return nil, nil, nil
 }
 
 // encrypt data
