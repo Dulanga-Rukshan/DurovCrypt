@@ -74,13 +74,13 @@ func main() {
 		ess.MainErr(err6)
 
 		//encrypting the data
-		encryptedData, err7 := ess.Encrypt(derivedKey, string(fileData))
+		encryptedData, err7 := ess.Decrypt(derivedKey, string(fileData))
 		ess.MainErr(err7)
 
 		//write the ciphertext data to file
 		successMsg, err8 := ess.FileWrite([]byte(encryptedData), fileName)
 		ess.MainErr(err8)
 
-		fmt.Printf("File Encrypted. %v.", successMsg)
+		fmt.Printf("File Decrypted. %v.", successMsg)
 	}
 }
