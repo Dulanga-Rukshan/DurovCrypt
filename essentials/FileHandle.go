@@ -2,6 +2,7 @@ package DurovCrypt
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -146,29 +147,55 @@ func FilePathInput(operation string) (string, error) {
 }
 
 // file reading function
-func FileRead(fileName string) ([]byte, error) {
+func FileRead(fileName string, operation string) ([]byte, []byte, error) {
 	//opening a file
 	filename, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("Error opening the file. \n\n%w", err)
+		return nil, nil, fmt.Errorf("Error opening the file. \n\n%w", err)
 	}
 
 	//closing file
 	defer filename.Close()
 
-	data, err := io.ReadAll(filename)
-	if len(data) < 0 {
-		return nil, fmt.Errorf("File is empty.")
+	switch strings.ToUpper(operation) {
+	case "ENCRYPT", "E":
+		data, err := io.ReadAll(filename)
+		if len(data) < 0 {
+			return nil, nil, fmt.Errorf("File is empty.")
+		}
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error reading the file. \n\n%w", err)
+		}
+
+		return data, nil, nil
+
+	case "DECRYPT", "D":
+		data, err := io.ReadAll(filename)
+		if len(data) < 0 {
+			return nil, nil, fmt.Errorf("File is empty.")
+		}
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error reading the file. \n\n%w", err)
+		}
+
+		dataString := string(data)
+		salt, err := base64.RawStdEncoding.DecodeString(dataString[:43])
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error getting salt back from file \n\n%w", err)
+		}
+
+		return data, []byte(salt), nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("Error reading the file. \n\n%w", err)
-	}
-	return data, nil
+	return nil, nil, nil
 }
 
-func FileWrite(cipherText []byte, fileName string) (string, error) {
-	if len(cipherText) < 0 {
+func FileWrite(data []byte, fileName string, salt []byte, operation string) (string, error) {
+	if len(data) == 0 && len(salt) == 32 {
 		return "", fmt.Errorf("cipherText is empty.")
+	} else if len(salt) < 32 {
+		return "", fmt.Errorf("Salt is less than 32 bytes.")
 	}
 
 	fileCheckerOptions := FileChecker{
@@ -178,14 +205,35 @@ func FileWrite(cipherText []byte, fileName string) (string, error) {
 	if err := IsValidFileName(fileName, fileCheckerOptions, HelpMsg()); err != nil {
 		return "", fmt.Errorf("Error: %w", err)
 	}
-	basepath := filepath.Base(fileName)
-	rmextension := filepath.Ext(fileName)
-	filename := basepath[:len(basepath)-len(rmextension)]
 
-	extension := "drv"
-	err := os.WriteFile(filename+"."+extension, cipherText, 0644)
-	if err != nil {
-		return "", fmt.Errorf("Can't write Data to file! %w\n", err)
+	//salt and ciphertext separating
+	combinedData := make([]byte, len(data)+len(salt))
+	copy(combinedData, data)
+	copy(combinedData[len(data):], salt)
+
+	//file base path
+	basepath := filepath.Base(fileName)
+
+	switch strings.ToUpper(operation) {
+	case "ENCRYPT", "E":
+		rmextension := filepath.Ext(fileName)
+		filename := basepath[:len(basepath)-len(rmextension)]
+
+		extension := "drv"
+		err := os.WriteFile(filename+""+rmextension+"."+extension, combinedData, 0644)
+		if err != nil {
+			return "", fmt.Errorf("Can't write Data to file! %w\n", err)
+		}
+		return fmt.Sprintf(" file saved as %v.%v.%v!", filename, rmextension, extension), nil
+
+	case "DECRYPT", "D":
+		rmextension := filepath.Ext(fileName)
+		filename := basepath[:len(basepath)-len(rmextension)]
+		err := os.WriteFile(filename, data, 0644)
+		if err != nil {
+			return "", fmt.Errorf("Can't write Data to file! %w\n", err)
+		}
+		return fmt.Sprintf(" file saved as %v!", filename), nil
 	}
-	return fmt.Sprintf(" file saved as %v.%v!", filename, extension), nil
+	return "", nil
 }
