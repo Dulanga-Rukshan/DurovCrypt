@@ -2,7 +2,7 @@ package main
 
 import (
 	ess "DurovCrypt/essentials"
-	"encoding/base64"
+
 	"fmt"
 
 	// "os"
@@ -22,53 +22,44 @@ func operationToPerform(operation string) (string, error) {
 		err8       error
 	)
 	//getting file path for decrypt
-	fileName, err2 := ess.FilePathInput(encryptFunctionCall)
+	fileName, err2 := ess.FilePathInput(operation)
 	ess.MainErr(err2)
 
 	//ask user for password to encrypt
-	password, err3 := ess.PasswordAskInput(encryptFunctionCall)
+	password, err3 := ess.PasswordAskInput(operation)
 	ess.MainErr(err3)
 
 	switch strings.ToUpper(operation) {
 	case "ENCRYPT", "E":
-		//salt generation
-		salt := ess.DataKey()
-
-		//key generation
-		derivedKey, salt, err5 := ess.KeyGen(password, encryptFunctionCall, salt)
-		ess.MainErr(err5)
-
-		fmt.Print(salt)
 
 		//open the file and read the data and assign data to variable
-		fileData, _, err6 := ess.FileRead(fileName, encryptFunctionCall)
+		fileData, _, err6 := ess.FileRead(fileName, operation)
 		ess.MainErr(err6)
 
 		//encrypting the data
-		result, err = ess.Encrypt(derivedKey, string(fileData))
-
-		base64Salt := base64.RawStdEncoding.EncodeToString(salt)
+		cipherText, derivedSalt, err := ess.Encrypt(password, operation, string(fileData))
+		ess.MainErr(err)
 
 		//write the ciphertext data to file
-		successMsg, err8 := ess.FileWrite([]byte(result), fileName, []byte(base64Salt), encryptFunctionCall)
+		successMsg, err8 := ess.FileWrite([]byte(cipherText), fileName, []byte(derivedSalt), operation)
 		return successMsg, err8
 
 	case "DECRYPT", "D":
 		//open the file and read the data and assign data to variable
-		fileData, derivedSalt, err6 := ess.FileRead(fileName, decryptFunctionCall)
+		fileData, derivedSalt, err6 := ess.FileRead(fileName, operation)
 		ess.MainErr(err6)
 
-		fmt.Print(derivedSalt)
+		fmt.Print(string(derivedSalt))
 
 		//key generation
-		derivedKey, derivedSalt, err5 := ess.KeyGen(password, decryptFunctionCall, derivedSalt)
+		derivedKey, _, err5 := ess.KeyGen(password, operation, derivedSalt)
 		ess.MainErr(err5)
 
 		//encrypting the data
 		result, err = ess.Decrypt(derivedKey, string(fileData))
 
 		//write the ciphertext data to file
-		successMsg, err8 := ess.FileWrite([]byte(result), fileName, derivedSalt, decryptFunctionCall)
+		successMsg, err8 := ess.FileWrite([]byte(result), fileName, nil, operation)
 		return successMsg, err8
 	}
 
