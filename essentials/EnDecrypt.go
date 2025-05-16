@@ -47,8 +47,8 @@ func (masterKey *Aragon2Key) Generate() ([]byte, []byte, error) {
 		masterKey.Threads,
 		uint32(masterKey.KeyLength),
 	)
-	b64Salt := base64.RawStdEncoding.EncodeToString(masterKey.Salt)
-	return derivedKey, []byte(b64Salt), nil
+
+	return derivedKey, masterKey.Salt, nil
 }
 
 // key generation
@@ -65,6 +65,7 @@ func KeyGen(password string, operation string, salt []byte) ([]byte, []byte, err
 			Threads:   uint8(runtime.NumCPU()),
 			KeyLength: 32,
 		}
+
 		derivedKey, derivedSalt, err6 := NewKey.Generate()
 		if err6 != nil {
 			return nil, nil, fmt.Errorf("\nERROR: %v\n", err6)
@@ -94,9 +95,18 @@ func KeyGen(password string, operation string, salt []byte) ([]byte, []byte, err
 }
 
 // encrypt data
-func Encrypt(Key []byte, plaintext string) (string, error) {
+func Encrypt(password string, operation string, plaintext string) (string, string, error) {
+	//salt generation
+	salt := DataKey()
+
+	//key generation
+	derivedKey, salt, err5 := KeyGen(password, operation, salt)
+	MainErr(err5)
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	fmt.Print(b64Salt)
+
 	//aes
-	AES, err := aes.NewCipher(Key)
+	AES, err := aes.NewCipher(derivedKey)
 	MainErr(err)
 
 	//gcm
@@ -107,40 +117,25 @@ func Encrypt(Key []byte, plaintext string) (string, error) {
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		fmt.Printf("Err: GCM nonce for encrypt err: %v", err)
-		return "", err
+		return "", "", err
 	}
 
 	//gcm encrypt the plaintext
 	cipherText := gcm.Seal(nil, nonce, []byte(plaintext), nil)
 
-	return hex.EncodeToString(cipherText), nil
+	return hex.EncodeToString(cipherText), b64Salt, nil
 }
 
 // decrypt data
 func Decrypt(Key []byte, cipherText string) (string, error) {
 	//
-	ciphertext, _ := hex.DecodeString(cipherText)
+	ciphertext, err := hex.DecodeString(cipherText)
+	MainErr(err)
 
 	//aes
 	AES, err := aes.NewCipher(Key)
 	MainErr(err)
 
-	//gcm
-	gcm, err := cipher.NewGCM(AES)
-	MainErr(err)
-
-	//nonceSize
-	nonceSize := gcm.NonceSize()
-	if len(cipherText) < nonceSize {
-		return "", fmt.Errorf("Err: Cipher text is shorter than nonce.")
-
-	}
-
-	//nonce and message spliting from cipherText
-	nonce, message := ciphertext[:nonceSize], ciphertext[nonceSize:]
-
-	//decrypting the ciphertext
-	plainText, err := gcm.Open(nil, nonce, message, nil)
 	if err != nil {
 		return "", fmt.Errorf("Err: decryption failed: %w", err)
 	}
