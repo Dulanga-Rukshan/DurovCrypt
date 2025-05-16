@@ -160,7 +160,7 @@ func FileRead(fileName string, operation string) ([]byte, []byte, error) {
 	switch strings.ToUpper(operation) {
 	case "ENCRYPT", "E":
 		data, err := io.ReadAll(filename)
-		if len(data) < 0 {
+		if len(data) == 0 {
 			return nil, nil, fmt.Errorf("File is empty.")
 		}
 
@@ -172,7 +172,7 @@ func FileRead(fileName string, operation string) ([]byte, []byte, error) {
 
 	case "DECRYPT", "D":
 		data, err := io.ReadAll(filename)
-		if len(data) < 0 {
+		if len(data) == 0 {
 			return nil, nil, fmt.Errorf("File is empty.")
 		}
 
@@ -181,7 +181,7 @@ func FileRead(fileName string, operation string) ([]byte, []byte, error) {
 		}
 
 		dataString := string(data)
-		salt, err := base64.RawStdEncoding.DecodeString(dataString[:43])
+		salt, err := base64.RawStdEncoding.DecodeString(dataString[len(data):])
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error getting salt back from file \n\n%w", err)
 		}
@@ -192,7 +192,7 @@ func FileRead(fileName string, operation string) ([]byte, []byte, error) {
 }
 
 func FileWrite(data []byte, fileName string, salt []byte, operation string) (string, error) {
-	if len(data) == 0 && len(salt) == 32 {
+	if len(data) == 0 && len(salt) == 0 {
 		return "", fmt.Errorf("cipherText is empty.")
 	} else if len(salt) < 32 {
 		return "", fmt.Errorf("Salt is less than 32 bytes.")
@@ -210,30 +210,49 @@ func FileWrite(data []byte, fileName string, salt []byte, operation string) (str
 	combinedData := make([]byte, len(data)+len(salt))
 	copy(combinedData, data)
 	copy(combinedData[len(data):], salt)
+	fmt.Printf("\n%s", salt)
 
 	//file base path
 	basepath := filepath.Base(fileName)
 
 	switch strings.ToUpper(operation) {
 	case "ENCRYPT", "E":
+		//getting uncencrypted file extension and save to rmextension
 		rmextension := filepath.Ext(fileName)
+
+		//getting base file name
 		filename := basepath[:len(basepath)-len(rmextension)]
 
+		//specifying file extension for encrypted file
 		extension := "drv"
-		err := os.WriteFile(filename+""+rmextension+"."+extension, combinedData, 0644)
+
+		//writing to a file with basefileName + rmextension + ".drv"
+		err := os.WriteFile(string(filename)+""+string(rmextension)+"."+string(extension), combinedData, 0644)
 		if err != nil {
 			return "", fmt.Errorf("Can't write Data to file! %w\n", err)
 		}
-		return fmt.Sprintf(" file saved as %v.%v.%v!", filename, rmextension, extension), nil
+
+		//returning the  success message.
+		return fmt.Sprintf(" file saved as %v%v.%v!", filename, rmextension, extension), nil
 
 	case "DECRYPT", "D":
+		//getting file extension ".drv"
 		rmextension := filepath.Ext(fileName)
+
+		//getting base filename
 		filename := basepath[:len(basepath)-len(rmextension)]
-		err := os.WriteFile(filename, data, 0644)
+
+		//getting default extension
+		rmDefaultExtension := filepath.Ext(filename)
+
+		decryptedFileName := basepath[len(filename)-len(rmDefaultExtension)]
+
+		//wrting to the file name
+		err := os.WriteFile(string(decryptedFileName)+"Decrypt."+string(rmDefaultExtension), data, 0644)
 		if err != nil {
 			return "", fmt.Errorf("Can't write Data to file! %w\n", err)
 		}
-		return fmt.Sprintf(" file saved as %v!", filename), nil
+		return fmt.Sprintf(" file saved as %vDecrypt.%v!", decryptedFileName, rmDefaultExtension), nil
 	}
 	return "", nil
 }
