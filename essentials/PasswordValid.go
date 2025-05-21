@@ -1,12 +1,16 @@
 package DurovCrypt
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"os"
+
 	"regexp"
 	"strings"
+
+	"time"
 	"unicode"
+
+	"github.com/AlecAivazis/survey/v2"
 )
 
 // password policy
@@ -24,44 +28,95 @@ var (
 )
 
 // operation asker function
-func PasswordAskInput(prompt string) (string, error) {
+func PasswordAskInput(prompt string, fileName string) (string, error) {
 
-	reader := bufio.NewReader(os.Stdin)
-	switch {
-	case prompt == "Encrypt":
+	switch strings.ToUpper(prompt) {
+	case "ENCRYPT", "E":
+
+		//ERRORTYPEerrorType := "ENCRYPTPASSERR: "
+
+		//loop until user enter write format password for encrypt
 		for {
-			fmt.Printf("Enter a password for the %s: ", prompt)
-			input, err := reader.ReadString('\n')
-			MainErr(err)
+			// fmt.Printf("Enter a password for the %s: ", prompt)
+			// input, err := reader.ReadString('\n')
+			var password1 string
+			var password2 string
 
-			password := strings.TrimSpace(input)
+			option1 := &survey.Password{
+				Message: "Enter password for Encrypt:",
+			}
+			survey.AskOne(option1, &password1, survey.WithIcons(func(icons *survey.IconSet) {
+				icons.Question.Text = ">>"
+				icons.Question.Format = "green"
+			}))
 
+			// fmt.Printf("Retype the password for the %s: ", prompt)
+			//input1, err := reader.ReadString('\n')
+			option2 := &survey.Password{
+				Message: "Retype password for Encrypt:",
+			}
+			survey.AskOne(option2, &password2, survey.WithIcons(func(icons *survey.IconSet) {
+				icons.Question.Text = ">>"
+				icons.Question.Format = "green"
+			}))
+
+			if password1 != password2 {
+				return "",
+					fmt.Errorf("Password aren't matching!")
+			}
 			//password validation
-			if err := PasswordChecker(password, Policy); err != nil {
+			if err := PasswordChecker(password1, Policy); err != nil {
 				fmt.Println("\nInvalid password:", err)
 				fmt.Printf("Please try again!!\n")
 				continue
 			}
-			return input, nil
+			return password1,
+				nil
 		}
 
-	case prompt == "Decrypt":
-		for {
-			fmt.Printf("Enter a password for the %s: ", prompt)
-			input, err := reader.ReadString('\n')
-			MainErr(err)
+	case "DECRYPT", "D":
+		//ERRORTYPE
+		errorType := "DECRYPTPASSERR: "
 
-			password := strings.TrimSpace(input)
+		//setting maxattempts for password entering
+		maxAttempts := 3
 
-			//password validation
-			if err := PasswordChecker(password, Policy); err != nil {
-				fmt.Println("\nInvalid password:", err)
-				fmt.Printf("Please try again!!\n")
-				continue
+		//open the file and read the data and assign data to variable
+		ciphertext, saltFromFile, derivedNonce, err := FileRead(fileName, prompt)
+		MainErr(errorType, err)
+
+		//loop until user enter write format password for encrypt
+		for attempts := 0; attempts < maxAttempts; attempts++ {
+
+			var password string
+
+			option := &survey.Password{
+				Message: "Enter password for Decrypt:",
 			}
-			return input, nil
-		}
 
+			survey.AskOne(option, &password, survey.WithIcons(func(icons *survey.IconSet) {
+				icons.Question.Text = ">>"
+				icons.Question.Format = "green"
+			}))
+
+			//encrypting the data
+			result, err := Decrypt(password, saltFromFile, derivedNonce, ciphertext)
+
+			//success sitiuation
+			if err == nil {
+				//write the ciphertext data to file
+				successMsg, err := FileWrite([]byte(result), fileName, nil, nil, prompt)
+				return successMsg,
+					err
+			}
+			fmt.Println("%v", err)
+
+			//wrong password
+			fmt.Println("\n****** DECRPERR: Invalid credentials or corrupt data (attempt", attempts+1, "of 3) ******")
+			time.Sleep(time.Second * time.Duration(attempts+1))
+		}
+		//all attempts are being used so exiting the program
+		return "", errors.New("Maximum attempts reached")
 	}
 	return "", nil
 }
@@ -73,7 +128,7 @@ func PasswordChecker(password string, passwordPolicy PasswordPolicyCheck) error 
 		return fmt.Errorf("Passoword can't be at more than %d chracters long!", passwordPolicy.MaxLength)
 	}
 
-	//checking password min minnimum length
+	//checking password min minimum length
 	if len(password) < passwordPolicy.MinLength {
 		return fmt.Errorf("Password has to be at lease %d chracter long!", passwordPolicy.MinLength)
 	}
@@ -123,7 +178,8 @@ func PasswordChecker(password string, passwordPolicy PasswordPolicyCheck) error 
 	}
 
 	if len(lowerRequirement) > 0 {
-		return fmt.Errorf("Password has to be strong & contain any of these to encrypt ---->%s", strings.Join(lowerRequirement, ",\n"))
+		return fmt.Errorf("Password has to be strong & contain any of these to encrypt ---->%s",
+			strings.Join(lowerRequirement, ",\n"))
 	}
 
 	//checking for if password has sequential characters
@@ -138,6 +194,7 @@ func PasswordChecker(password string, passwordPolicy PasswordPolicyCheck) error 
 
 // password sequential integer check function
 func seqIntegerCheck(word string, length int) bool {
+	//if length of sequntial password integer string is shorter than provided len password is ok
 	if len(word) < length {
 		return false
 	}
@@ -158,6 +215,7 @@ func seqIntegerCheck(word string, length int) bool {
 
 // password sequential check for characters
 func seqChracterCheck(word string, length int) bool {
+	//if length of sequntial password string is shorter than provided len password is ok
 	if len(word) < length {
 		return false
 	}
@@ -166,7 +224,8 @@ func seqChracterCheck(word string, length int) bool {
 	for _, character := range word {
 		if character == currentChracter {
 			count += 1
-			if count >= length { // if previous chracter does not equal to current one it is add one to count and count get equal to length if there is no sequential characters.
+			if count >= length { /*if previous character does not equal to current one it is add
+				one to count and count get equal to length if there is no sequential characters.*/
 				return true
 			}
 		} else {
