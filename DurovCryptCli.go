@@ -2,6 +2,7 @@ package main
 
 import (
 	ess "DurovCrypt/essentials"
+	"os"
 
 	"fmt"
 
@@ -12,84 +13,80 @@ import (
 const (
 	encryptFunctionCall = "Encrypt"
 	decryptFunctionCall = "Decrypt"
+
+	//ERRORTYPE
+	aerrorType    = "OASKERR: "      //ask error
+	ferrorType    = "OFILEERR: "     //file path ask error
+	perrorType    = "OPASKERR: "     //password ask error
+	oefaerrorType = "OPENCRYFAERR: " //operation encrypt faliure error
+	odfaerrorType = "OPDECRYFAERR: " //operation decrypt faliure error
 )
 
 func operationToPerform(operation string) (string, error) {
-	var (
-		result     string
-		successMsg string
-		err        error
-		err8       error
-	)
-	//getting file path for decrypt
-	fileName, err2 := ess.FilePathInput(operation)
-	ess.MainErr(err2)
 
-	//ask user for password to encrypt
-	password, err3 := ess.PasswordAskInput(operation)
-	ess.MainErr(err3)
+	//getting file path for decrypt
+	fileName, err := ess.FilePathInput(operation)
+	if err != nil {
+		if err.Error() == "operation cancelled by user" {
+			fmt.Println("EXIT: Operation cancelled by user")
+			os.Exit(0)
+		}
+		ess.MainErr("", err)
+	}
 
 	switch strings.ToUpper(operation) {
 	case "ENCRYPT", "E":
 
+		//ask user for password to encrypt
+		password, err := ess.PasswordAskInput(encryptFunctionCall, fileName)
+		ess.MainErr("", err)
+
 		//open the file and read the data and assign data to variable
-		fileData, _, err6 := ess.FileRead(fileName, operation)
-		ess.MainErr(err6)
+		fileData, _, _, err := ess.FileRead(fileName, operation)
+		ess.MainErr("", err)
 
 		//encrypting the data
-		cipherText, derivedSalt, err := ess.Encrypt(password, operation, string(fileData))
-		ess.MainErr(err)
+		cipherText, derivedSalt, derivedNonce, err := ess.Encrypt(password, fileData)
+		ess.MainErr("", err)
 
 		//write the ciphertext data to file
-		successMsg, err8 := ess.FileWrite([]byte(cipherText), fileName, []byte(derivedSalt), operation)
-		return successMsg, err8
+		successMsg, err8 := ess.FileWrite(cipherText, fileName, derivedSalt, derivedNonce, operation)
+		return successMsg,
+			err8
 
 	case "DECRYPT", "D":
-		//open the file and read the data and assign data to variable
-		fileData, derivedSalt, err6 := ess.FileRead(fileName, operation)
-		ess.MainErr(err6)
 
-		fmt.Print(string(derivedSalt))
-
-		//key generation
-		derivedKey, _, err5 := ess.KeyGen(password, operation, derivedSalt)
-		ess.MainErr(err5)
-
-		//encrypting the data
-		result, err = ess.Decrypt(derivedKey, string(fileData))
-
-		//write the ciphertext data to file
-		successMsg, err8 := ess.FileWrite([]byte(result), fileName, nil, operation)
-		return successMsg, err8
+		//ask user for password to encrypt
+		successMsg, err := ess.PasswordAskInput(decryptFunctionCall, fileName)
+		if err != nil {
+			ess.MainErr("", err)
+			os.Exit(0) //exiting the program after maximum attempts reach
+		}
+		return successMsg, nil
 	}
 
-	ess.MainErr(err)
-	return successMsg, err8
+	return "",
+		nil
 }
 func main() {
+	fmt.Println(ess.WelcomeMsg())
+	Operation, err := ess.DefaultAskInput()
+	ess.MainErr(aerrorType, err)
 
-	//Welcome message
-
-	//args := os.Args
-
-	// if len(args) > 1{
-	// 	if
-	// }
-	//ask user for what to do
-	Operation, err1 := ess.DefaultAskInput("What operation do you wanna perform: ")
-	ess.MainErr(err1)
-
-	switch {
+	switch strings.ToUpper(Operation) {
 
 	//if user input 'e' for encrypt
-	case strings.ToUpper(Operation) == "E" || strings.ToUpper(Operation) == "ENCRYPT":
+	case "E", "ENCRYPT":
 		successMsg, err := operationToPerform(encryptFunctionCall)
-		ess.MainErr(err)
+		ess.MainErr(oefaerrorType, err)
 		fmt.Println(successMsg)
 
-	case strings.ToUpper(Operation) == "D" || strings.ToUpper(Operation) == "DECRYPT":
+	case "D", "DECRYPT":
 		successMsg, err := operationToPerform(decryptFunctionCall)
-		ess.MainErr(err)
+		ess.MainErr(odfaerrorType, err)
 		fmt.Println(successMsg)
+	case "H", "HELP":
+		helpMsg := ess.ShowHelp()
+		fmt.Println(helpMsg)
 	}
 }
