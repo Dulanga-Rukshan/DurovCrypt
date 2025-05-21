@@ -4,140 +4,141 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
-	"strings"
 
 	"golang.org/x/crypto/argon2"
 )
 
+const (
+	saltSize  = 32
+	nonceSize = 12
+
+	//argon2
+	ArgonIterations = 3
+	ArgonMemory     = 64 * 1024 //64MB
+	ArgonThreads    = 4
+	ArgonKeyLength  = 32 //256bit key
+)
+
 // aes256 salt generator
 func DataKey() []byte {
-	datakey := make([]byte, 32)
+	datakey := make([]byte, saltSize)
 	if _, err := io.ReadFull(rand.Reader, datakey); err != nil {
 		fmt.Println("Err: Aragon2 salt generate failed: %w", err)
 	}
 	return datakey
 }
 
-// key gernerating for encrypt and decrypt
-func (masterKey *Aragon2Key) Generate() ([]byte, []byte, error) {
-	if masterKey == nil {
-		return nil, nil, errors.New("Err: Argon key not found!")
+// KeyGen generates consistent keys for both encryption and decryption
+func KeyGen(password string, salt []byte) ([]byte, []byte, error) {
+	if len(password) == 0 {
+		return nil, nil, errors.New("empty password")
 	}
-	if len(masterKey.Password) == 0 {
-		return nil, nil, errors.New("Err: Password is empty!")
-	}
-	if len(masterKey.Salt) < 8 {
-		return nil, nil, errors.New("Err: Salt is weak!")
-	}
-	if masterKey.Iteration < 1 {
-		return nil, nil, errors.New("Err: Iteration count is low!")
+	if len(salt) < 8 {
+		return nil, nil, errors.New("salt too short")
 	}
 
 	derivedKey := argon2.IDKey(
-		masterKey.Password,
-		masterKey.Salt,
-		masterKey.Iteration,
-		masterKey.MemSize,
-		masterKey.Threads,
-		uint32(masterKey.KeyLength),
+		[]byte(password),
+		salt,
+		ArgonIterations,
+		ArgonMemory,
+		ArgonThreads,
+		ArgonKeyLength,
 	)
 
-	return derivedKey, masterKey.Salt, nil
+	return derivedKey, salt, nil
 }
 
 // key generation
-func KeyGen(password string, operation string, salt []byte) ([]byte, []byte, error) {
+func KeyGenerator(password string, salt []byte) ([]byte, []byte, error) {
 
-	switch strings.ToUpper(operation) {
-	case "ENCRYPT", "E":
-
-		NewKey := Aragon2Key{
-			Password:  []byte(password),
-			Salt:      salt,
-			Iteration: uint32(3),
-			MemSize:   uint32(64 * 1024),
-			Threads:   uint8(runtime.NumCPU()),
-			KeyLength: 32,
-		}
-
-		derivedKey, derivedSalt, err6 := NewKey.Generate()
-		if err6 != nil {
-			return nil, nil, fmt.Errorf("\nERROR: %v\n", err6)
-		}
-
-		return derivedKey, derivedSalt, nil
-
-	case "DECRYPT", "D":
-		//key generation
-		NewKey := Aragon2Key{
-			Password:  []byte(password),
-			Salt:      salt,
-			Iteration: uint32(3),
-			MemSize:   uint32(64 * 1024),
-			Threads:   uint8(runtime.NumCPU()),
-			KeyLength: 32,
-		}
-		derivedKey, derivedSalt, err6 := NewKey.Generate()
-		if err6 != nil {
-			return nil, nil, fmt.Errorf("\nERROR: %v\n", err6)
-		}
-
-		return derivedKey, derivedSalt, nil
+	derivedKey, salt, err := KeyGen(password, salt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("KEYGENERR: %v", err)
 	}
 
-	return nil, nil, nil
+	return derivedKey, salt, nil
 }
 
 // encrypt data
-func Encrypt(password string, operation string, plaintext string) (string, string, error) {
+func Encrypt(password string, plaintext []byte) ([]byte, []byte, []byte, error) {
+	//ERRORTYPE
+	errorType := "ENCRYPTERR: "
+
 	//salt generation
 	salt := DataKey()
 
 	//key generation
-	derivedKey, salt, err5 := KeyGen(password, operation, salt)
-	MainErr(err5)
-	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
-	fmt.Print(b64Salt)
+	derivedKey, salt, err := KeyGenerator(password, salt)
+	MainErr("", err)
 
 	//aes
 	AES, err := aes.NewCipher(derivedKey)
-	MainErr(err)
+	MainErr(errorType, err)
 
 	//gcm
 	gcm, err := cipher.NewGCM(AES)
-	MainErr(err)
+	MainErr(errorType, err)
 
 	//gcm nonce or iv generate
-	nonce := make([]byte, gcm.NonceSize())
+	nonce := make([]byte, nonceSize)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		fmt.Printf("Err: GCM nonce for encrypt err: %v", err)
-		return "", "", err
+		fmt.Println("%v GCM nonce for encrypt err: %v", errorType, err)
+
+		return nil,
+			nil,
+			nil,
+			err
 	}
 
 	//gcm encrypt the plaintext
-	cipherText := gcm.Seal(nil, nonce, []byte(plaintext), nil)
+	cipherText := gcm.Seal(nil, nonce, plaintext, nil)
 
-	return hex.EncodeToString(cipherText), b64Salt, nil
+	return cipherText,
+		salt,
+		nonce,
+		nil
 }
 
 // decrypt data
-func Decrypt(Key []byte, cipherText string) (string, error) {
-	//
-	ciphertext, err := hex.DecodeString(cipherText)
-	MainErr(err)
+func Decrypt(password string, saltFromFile []byte, nonce []byte, cipherText []byte) (string, error) {
+	//ERRORTYPE
+	errorType := "DECRYPTERR: "
 
-	//aes
-	AES, err := aes.NewCipher(Key)
-	MainErr(err)
+	derivedKey, _, err := KeyGenerator(password, saltFromFile)
 
-	if err != nil {
-		return "", fmt.Errorf("Err: decryption failed: %w", err)
+	//key validation
+	if len(derivedKey) != 32 {
+		return "", fmt.Errorf("%vInvalid key size", errorType)
 	}
-	return string(plainText), nil
+
+	//nonce validation
+	if len(nonce) != nonceSize {
+		return "", fmt.Errorf("%vInvalid nonce size", errorType)
+	}
+
+	//aes key generate
+	AES, err := aes.NewCipher(derivedKey)
+	MainErr(errorType, err)
+
+	//gcm
+	gcm, err := cipher.NewGCM(AES)
+	MainErr(errorType, err)
+
+	//checking ciphertext size
+	if len(cipherText) < gcm.Overhead() {
+		return "", fmt.Errorf("%vCiphertext too short", errorType)
+	}
+	//gcm encrypt the plaintext
+	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return "",
+			fmt.Errorf("%v decryption failed: %w", errorType, err)
+	}
+
+	return string(plainText),
+		nil
 }
