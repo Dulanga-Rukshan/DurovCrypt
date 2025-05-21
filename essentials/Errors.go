@@ -2,6 +2,7 @@ package DurovCrypt
 
 import (
 	"fmt"
+	"os"
 )
 
 func (e *ErrorHandeling) Error() string {
@@ -12,8 +13,9 @@ func NewFileError(message, help string) error {
 	return &ErrorHandeling{Message: message, HelpMsg: help}
 }
 
-func MainErr(message error) {
+func MainErr(errorType string, message error) {
 	if message != nil {
-		fmt.Printf("\nERROR: %v\n", message)
+		fmt.Printf("%v %v\n", errorType, message)
+		os.Exit(0)
 	}
 }
