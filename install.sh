@@ -1,29 +1,25 @@
 #!/bin/bash
 
-
 set -e
 
-APP_NAME="DurovCrypt"
-INSTALL_DIR="${HOME}/.local/bin"
-BINARY_PATH="${INSTALL_DIR}/${APP_NAME}"
+app_name="DurovCrypt"
+install_dir="${HOME}/.local/bin"
+binary_path="${install_dir}/${app_name}"
 
-#colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# colors
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[1;33m'
+blue='\033[0;34m'
+nc='\033[0m'
 
-#check if the commands exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
-
-#install go 
+#install go in linux if there no go
 install_go_linux() {
-    echo -e "${BLUE}Installing Go...${NC}"
+    echo -e "${blue}installing go...${nc}"
     
-    #check package manager 
     if command_exists apt; then
         sudo apt update
         sudo apt install -y golang
@@ -36,111 +32,100 @@ install_go_linux() {
     elif command_exists pacman; then
         sudo pacman -Sy --noconfirm go
     else
-        echo -e "${RED}Could not detect package manager.${NC}"
-        echo "Please install Go manually from https://golang.org/dl/"
+        echo -e "${red}could not detect package manager.${nc}"
+        echo "please install go manually from https://golang.org/dl/"
         exit 1
     fi
     
-    #verifiyng the installation
     if ! command_exists go; then
-        echo -e "${RED}Installation failed. please install Go manually.${NC}"
+        echo -e "${red}installation failed. please install go manually.${nc}"
         exit 1
     fi
     
-    echo -e "${GREEN}Go installed successfully!${NC}"
+    echo -e "${green}go installed successfully!${nc}"
 }
-
-#install go on mac os 
+##install go in mac 
 install_go_macos() {
-    echo -e "${BLUE}Installing Go on macOS...${NC}"
+    echo -e "${blue}installing go on macos...${nc}"
     
     if command_exists brew; then
         brew install go
     else
-        echo -e "${YELLOW}Homebrew not found.${NC}"
-        echo "1) Install Homebrew first (recommended): https://brew.sh"
-        echo "2) Or download Go directly from: https://golang.org/dl/"
+        echo -e "${yellow}homebrew not found.${nc}"
+        echo "1) install homebrew first (recommended): https://brew.sh"
+        echo "2) or download go directly from: https://golang.org/dl/"
         exit 1
     fi
     
-   #verifiyng the installation
     if ! command_exists go; then
-        echo -e "${RED}Installation failed. Please install Go manually.${NC}"
+        echo -e "${red}installation failed. please install go manually.${nc}"
         exit 1
     fi
     
-    echo -e "${GREEN}Go installed successfully!${NC}"
+    echo -e "${green}go installed successfully!${nc}"
 }
-
-#check for go 
+#if go not exists ask to install it from user
 if ! command_exists go; then
-    echo -e "${YELLOW}Go is not installed on your system.${NC}"
-    echo -e "Go is required to build and install ${APP_NAME}."
+    echo -e "${yellow}go is not installed on your system.${nc}"
+    echo -e "go is required to build and install ${app_name}."
     
-    #os 
-    OS=$(uname -s)
+    os=$(uname -s)
     
     while true; do
-        read -rp "Do you want to install Go now? (y/n): " choice
+        read -rp "do you want to install go now? (y/n): " choice
         case "$choice" in
             y|Y )
-                echo -e "${BLUE}Attempting to install Go...${NC}"
+                echo -e "${blue}attempting to install go...${nc}"
                 
-                if [ "$OS" = "Linux" ]; then
+                if [ "$os" = "Linux" ]; then
                     install_go_linux
-                elif [ "$OS" = "Darwin" ]; then
+                elif [ "$os" = "Darwin" ]; then
                     install_go_macos
                 else
-                    echo -e "${YELLOW}automatic installation not supported for your OS.${NC}"
-                    echo "Please install Go manually from https://golang.org/dl/"
+                    echo -e "${yellow}automatic installation not supported for your os.${nc}"
+                    echo "please install go manually from https://golang.org/dl/"
                     exit 1
                 fi
                 break
                 ;;
             n|N )
-                echo -e "${RED}Aborting installation. please install Go manually and try again.${NC}"
-                echo "Download Go from: https://golang.org/dl/"
+                echo -e "${red}aborting installation. please install go manually and try again.${nc}"
+                echo "download go from: https://golang.org/dl/"
                 exit 1
                 ;;
             * )
-                echo "Please answer y or n."
+                echo "please answer y or n."
                 ;;
         esac
     done
 fi
 
-#continue with installation tool
-echo -e "${GREEN}=== Installing ${APP_NAME} ===${NC}"
+echo -e "${green}=== installing ${app_name} ===${nc}"
 
-#create a dir
-mkdir -p "$INSTALL_DIR"
+mkdir -p "$install_dir"
 
-#build the durovcrypt
-echo "Attempting build..."
-if ! go build -o "$APP_NAME" 2>/dev/null; then
-    echo "Standard build failed, retrying without VCS..."
-    go build -buildvcs=false -o my-tool
-fi
-
-#insall
-echo "Installing to ${BINARY_PATH}"
-mv -f "$APP_NAME" "$BINARY_PATH"
-chmod +x "$BINARY_PATH"
-
-#Verfiy
-if [[ -f "$BINARY_PATH" ]]; then
-    echo -e "${GREEN}Successfully installed!${NC}"
-else
-    echo -e "${RED}Installation failed${NC}"
+echo "building binary..."
+if ! go build -buildvcs=false -o "$app_name"; then
+    echo -e "${red}build failed${nc}"
     exit 1
 fi
 
-#checking the path variable
-if [[ ":$PATH:" != *":${INSTALL_DIR}:"* ]]; then
-    echo -e "${YELLOW}Note: ${INSTALL_DIR} is not in your PATH${NC}"
-    echo "To make the tool available everywhere, add this to your shell configuration:(~/.bashrc or ~/.zshrc file )"
-    echo "export PATH=\"${INSTALL_DIR}:\$PATH\""
-    echo "Then run: source ~/.bashrc (or your shell config file)"
+echo "installing to ${binary_path}"
+mv -f "$app_name" "$binary_path"
+chmod +x "$binary_path"
+
+if [[ -f "$binary_path" ]]; then
+    echo -e "${green}successfully installed!${nc}"
+else
+    echo -e "${red}installation failed${nc}"
+    exit 1
 fi
 
-echo -e "${GREEN}Try running: ${APP_NAME}${NC}"
+if [[ ":$PATH:" != *":${install_dir}:"* ]]; then
+    echo -e "${yellow}note: ${install_dir} is not in your path${nc}"
+    echo "to make the tool available everywhere, add this to your shell configuration:"
+    echo "export PATH=\"${install_dir}:\$PATH\""
+    echo "then run: source ~/.bashrc (or your shell config file)"
+fi
+
+echo -e "${green}try running: ${app_name}${nc}"
