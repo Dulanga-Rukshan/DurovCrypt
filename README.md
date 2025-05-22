@@ -46,7 +46,7 @@ after that cd in to folder DurovCrypt 👇
 </p>
 
 ## Step 03 
-After that you have to run ./install.sh command to install all dependencies for DurovCrypt, DurovCrypt is go based language. So it need go compiler 
+After that you have to run ./install.sh command to install all dependencies for DurovCrypt, DurovCrypt is written in go language. So it need go compiler 
 to run in a system ./install.sh will check the system if go installed in system it will build the DurovCrypt, unless go isn't installed in a system it will 
 prompt you to install. 👇
 <p align="start">
