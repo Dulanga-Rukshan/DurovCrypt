@@ -129,7 +129,7 @@ Now Decrypted file is saved in a encrpted file folder lets have a look in to it.
 
 ## Help
 
-If you stuck at using DurovCrypt. just type Help or select help option, it will prompt you help message how to user DurovCrypt. 
+If you stuck at using DurovCrypt. just type Help or select help option, it will prompt you help message how to use DurovCrypt. 
 <p align="start">
   <img src="assests/DurovCryptHelp.png" alt="DurovCryptHelp.png Banner" width="500" style="border-radius:10px">
 </p>
