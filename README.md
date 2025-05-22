@@ -155,7 +155,7 @@ This isnt just scrambling, it creates,
 > Protection that stays strong even as computers get faster
 
 Curently i didn't build hmac (hash based message authentication code) for DurovCrypt. A authentication of encrypted file when decrypting, because 
-gcm is already taking card of it. Let's say hacker get your encrypted file now he wants decrypt and see data inside it, Lets see
+gcm is already taking care of it. Let's say hacker get your encrypted file now he wants decrypt and see data inside it, Lets see
 how much time should he have to spend to crack the key. Meaning if a hacker don't know the password that used for encrypting a file he have 
 to guess the password, by attacking it or so called brute forcing is the only way he can decrypt the file.
 if you use password with, 
