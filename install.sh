@@ -116,10 +116,10 @@ echo -e "${GREEN}=== Installing ${APP_NAME} ===${NC}"
 mkdir -p "$INSTALL_DIR"
 
 #build the durovcrypt
-echo "Building binary..."
-if ! go build -o "$APP_NAME"; then
-    echo -e "${RED}Build failed${NC}"
-    exit 1
+echo "Attempting build..."
+if ! go build -o "$APP_NAME" 2>/dev/null; then
+    echo "Standard build failed, retrying without VCS..."
+    go build -buildvcs=false -o my-tool
 fi
 
 #insall
