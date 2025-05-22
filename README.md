@@ -216,7 +216,7 @@ would take about,
 
 the age of the universe is 13.8 billion years mean 10¹⁰ years, to crack the AES 256 would take ~10⁵² × the age of the universe to brute force. 
 You can argue what about quantum computers, can't they break it in future or some Five eyes country use their computer arsenal to decrypt the key
-(unless you are a most wanted man in the world), Let's take most fastest existing quantum attack algorithm the grovers algorithm it reduces the 256 to 128 
+(unless you are a most wanted man in the world)? Let's take most fastest existing quantum attack algorithm the grovers algorithm it reduces the 256 to 128 
 so time required for it is 2¹²⁸ operations still ~10²⁸ years it is impossible in practice. Aes is one of the most widely used encryption algorithms 
 in the world. If a crypto algorithm is private wouldn't it be more secure? no. it's the quite opposite. The more the use of a crypto algorithms more
 cryptanalysts in community try to break it, more about it you can read it here -->https://www.networkcomputing.com/network-security/just-say-no-to-proprietary-cryptographic-algorithms
